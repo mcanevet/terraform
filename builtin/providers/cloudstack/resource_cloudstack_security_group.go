@@ -44,7 +44,13 @@ func resourceCloudStackSecurityGroup() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"cidr_list": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							ForceNew: true,
+						},
+
+						"security_group": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
 							ForceNew: true,
 						},
 
@@ -126,7 +132,34 @@ func resourceCloudStackSecurityGroupCreate(d *schema.ResourceData, meta interfac
 			param := cs.SecurityGroup.NewAuthorizeSecurityGroupIngressParams()
 
 			param.SetSecuritygroupid(d.Id())
-			param.SetCidrlist([]string{rule["cidr_list"].(string)})
+			if cidrlist := rule["cidr_list"]; cidrlist != "" {
+				param.SetCidrlist([]string{cidrlist.(string)})
+				log.Printf("[DEBUG] cidr = %v", cidrlist)
+			}
+			if securitygroup := rule["security_group"]; securitygroup != "" {
+				// Get the security group details
+				ag, count, err := cs.SecurityGroup.GetSecurityGroupByName(
+					securitygroup.(string),
+					cloudstack.WithProject(d.Get("project").(string)),
+				)
+				if err != nil {
+					if count == 0 {
+						log.Printf("[DEBUG] Security group %s does not longer exist", d.Get("name").(string))
+						d.SetId("")
+						return nil
+					}
+
+					log.Printf("[DEBUG] Found %v groups matching", count)
+
+					return err
+				}
+				log.Printf("[DEBUG] ag = %v", ag)
+				m := make(map[string]string)
+				m["account"] = ag.Account
+				m["group"] = ag.Name
+				log.Printf("[DEBUG] m = %v", m)
+				param.SetUsersecuritygrouplist(m)
+			}
 			param.SetStartport(startPort)
 			param.SetEndport(endPort)
 			param.SetProtocol(rule["protocol"].(string))
@@ -140,7 +173,34 @@ func resourceCloudStackSecurityGroupCreate(d *schema.ResourceData, meta interfac
 			param := cs.SecurityGroup.NewAuthorizeSecurityGroupEgressParams()
 
 			param.SetSecuritygroupid(d.Id())
-			param.SetCidrlist([]string{rule["cidr_list"].(string)})
+			if cidrlist := rule["cidr_list"]; cidrlist != "" {
+				param.SetCidrlist([]string{cidrlist.(string)})
+				log.Printf("[DEBUG] cidr = %v", cidrlist)
+			}
+			if securitygroup := rule["security_group"]; securitygroup != "" {
+				// Get the security group details
+				ag, count, err := cs.SecurityGroup.GetSecurityGroupByName(
+					securitygroup.(string),
+					cloudstack.WithProject(d.Get("project").(string)),
+				)
+				if err != nil {
+					if count == 0 {
+						log.Printf("[DEBUG] Security group %s does not longer exist", d.Get("name").(string))
+						d.SetId("")
+						return nil
+					}
+
+					log.Printf("[DEBUG] Found %v groups matching", count)
+
+					return err
+				}
+				log.Printf("[DEBUG] ag = %v", ag)
+				m := make(map[string]string)
+				m["account"] = ag.Account
+				m["group"] = ag.Name
+				log.Printf("[DEBUG] m = %v", m)
+				param.SetUsersecuritygrouplist(m)
+			}
 			param.SetStartport(startPort)
 			param.SetEndport(endPort)
 			param.SetProtocol(rule["protocol"].(string))
