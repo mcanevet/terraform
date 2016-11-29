@@ -26,7 +26,7 @@ func resourceRancherRegistrationToken() *schema.Resource {
 			},
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 			},
 			"description": &schema.Schema{
